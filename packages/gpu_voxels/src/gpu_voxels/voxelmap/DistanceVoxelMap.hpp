@@ -135,6 +135,30 @@ bool DistanceVoxelMap::mergeOccupied(const boost::shared_ptr<ProbVoxelMap> other
   return true;
 }
 
+bool DistanceVoxelMap::mergeFree(const boost::shared_ptr<ProbVoxelMap> other, const Vector3ui &voxel_offset, float occupancy_threshold) {
+  boost::lock(this->m_mutex, other->m_mutex);
+  lock_guard guard(this->m_mutex, boost::adopt_lock);
+  lock_guard guard2(other->m_mutex, boost::adopt_lock);
+
+  thrust::transform_if(
+        thrust::device_system_tag(),
+
+        thrust::make_zip_iterator( thrust::make_tuple(other->getDeviceDataPtr(),
+                                                      thrust::counting_iterator<uint>(0) )),
+
+        thrust::make_zip_iterator( thrust::make_tuple(other->getDeviceDataPtr() + this->getVoxelMapSize(),
+                                                      thrust::counting_iterator<uint>(this->getVoxelMapSize()) )),
+
+        this->getDeviceDataPtr(),
+
+        mergeOccupiedOperator(this->m_dim, voxel_offset),
+
+        probVoxelFree(ProbabilisticVoxel::floatToProbability(occupancy_threshold))
+      );
+
+  return true;
+}
+
 /**
  * cjuelg: jump flood distances, obstacle vectors
  */
@@ -687,6 +711,24 @@ void DistanceVoxelMap::extract_distances(free_space_t* dev_distances, int robot_
   HANDLE_CUDA_ERROR(cudaDeviceSynchronize());
 }
 
+void DistanceVoxelMap::extract_distances_host(std::vector<free_space_t>& output, int robot_radius) const
+{
+  thrust::device_ptr<DistanceVoxel> dev_voxel_begin(this->m_dev_data);
+  thrust::device_ptr<DistanceVoxel> dev_voxel_end(dev_voxel_begin + this->getVoxelMapSize());
+  thrust::device_vector<free_space_t> dev_free_space(this->getVoxelMapSize());
+
+  // thrust transform pbaDistanceVoxmap->getDeviceDataPtr() to byte[] (round down to 0..255, cap at 255; could even parameterize on robot size and create boolean
+  thrust::counting_iterator<int> count_start(0);
+  thrust::transform(thrust::make_zip_iterator(thrust::make_tuple(dev_voxel_begin, count_start)),
+                    thrust::make_zip_iterator(thrust::make_tuple(dev_voxel_end, count_start + this->getVoxelMapSize())),
+                    dev_free_space.begin(),
+                    DistanceVoxel::extract_byte_distance(Vector3i(m_dim), robot_radius));
+  HANDLE_CUDA_ERROR(cudaDeviceSynchronize());
+
+  thrust::copy(dev_free_space.begin(), dev_free_space.end(), output.begin());
+
+}
+
 DistanceVoxel::pba_dist_t DistanceVoxelMap::getSquaredObstacleDistance(const Vector3ui& pos) {
   return this->getSquaredObstacleDistance(pos.x, pos.y, pos.z);
 }
@@ -768,6 +810,29 @@ struct DistanceFunctor
   }
 };
 
+struct SignedDistanceFunctor
+{
+  Vector3ui dims;
+  float voxel_side_length;
+
+  __host__ __device__
+  SignedDistanceFunctor(Vector3ui dims, float voxel_side_length) : dims(dims), voxel_side_length(voxel_side_length) {}
+  
+  __host__ __device__
+  float operator()(thrust::tuple<DistanceVoxel, uint> t1, thrust::tuple<DistanceVoxel, uint> t2)
+  {
+    DistanceVoxel voxel1 = thrust::get<0>(t1);
+    uint linear_id1 = thrust::get<1>(t1);
+    Vector3ui position1 = mapToVoxels(linear_id1, dims);
+
+    DistanceVoxel voxel2 = thrust::get<0>(t2);
+    uint linear_id2 = thrust::get<1>(t2);
+    Vector3ui position2 = mapToVoxels(linear_id2, dims);
+
+    return voxel_side_length * ( (float) sqrtf(voxel1.squaredObstacleDistance(Vector3i(position1.x, position1.y, position1.z))) - (float) sqrtf(voxel2.squaredObstacleDistance(Vector3i(position2.x, position2.y, position2.z))));
+  }
+};
+
 void DistanceVoxelMap::getDistancesToHost(std::vector<uint>& indices, std::vector<DistanceVoxel::pba_dist_t>& output)
 {
   // copy indices to device
@@ -794,6 +859,48 @@ void DistanceVoxelMap::getDistances(thrust::device_ptr<uint> dev_indices_begin, 
                     thrust::make_zip_iterator(thrust::make_tuple(dev_voxels.end(), dev_indices_end)),
                     dev_output,
                     DistanceFunctor(m_dim));
+}
+
+// TODO - this is wrong. Needs to use zip
+void DistanceVoxelMap::getAllDistancesToHost(std::vector<DistanceVoxel::pba_dist_t>& output)
+{  
+  thrust::device_ptr<DistanceVoxel> voxel_begin(this->m_dev_data);
+  thrust::device_ptr<DistanceVoxel> voxel_end(this->m_dev_data + this->m_voxelmap_size);
+  
+    //get the Voxels corresponding to the selected indices
+  thrust::device_vector<DistanceVoxel::pba_dist_t> dev_voxels(this->m_voxelmap_size);
+
+  // extract the distances for the indexed voxels
+  thrust::transform(voxel_begin,
+                    voxel_end,
+                    dev_voxels.begin(),
+                    DistanceFunctor(m_dim)); // Note that this must take tuples <DistanceVoxel, linear_id>
+
+  thrust::copy(dev_voxels.begin(), dev_voxels.end(), output.begin());
+
+}
+
+void DistanceVoxelMap::getSignedDistancesToHost(const boost::shared_ptr<DistanceVoxelMap> other, std::vector<float>& host_result_map)
+{  
+  
+  thrust::device_ptr<DistanceVoxel> voxel_begin(this->m_dev_data);
+  thrust::device_ptr<DistanceVoxel> voxel_end(this->m_dev_data + this->m_voxelmap_size);
+  thrust::device_ptr<DistanceVoxel> other_voxel_begin(other->m_dev_data);
+  // thrust::device_ptr<DistanceVoxel> other_voxel_end(other->m_dev_data + this->m_voxelmap_size);
+  
+  thrust::device_vector<float> dev_output(this->m_voxelmap_size);
+ 
+  // thrust::device_ptr<DistanceVoxel> result_voxel_begin(result_map->m_dev_data);
+  thrust::counting_iterator<int> count_start(0);
+
+  thrust::transform(thrust::make_zip_iterator(thrust::make_tuple(voxel_begin, count_start)), 
+                    thrust::make_zip_iterator(thrust::make_tuple(voxel_end, count_start + this->getVoxelMapSize())), 
+                    thrust::make_zip_iterator(thrust::make_tuple(other_voxel_begin, count_start)), 
+                    dev_output.begin(),
+                    SignedDistanceFunctor(m_dim, m_voxel_side_length));
+  HANDLE_CUDA_ERROR(cudaDeviceSynchronize());
+
+  thrust::copy(dev_output.begin(), dev_output.end(), host_result_map.begin());
 }
 
 /**

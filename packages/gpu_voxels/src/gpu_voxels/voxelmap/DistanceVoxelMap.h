@@ -64,6 +64,7 @@ public:
 public:
 
   virtual bool mergeOccupied(const boost::shared_ptr<ProbVoxelMap> other, const Vector3ui &voxel_offset = Vector3ui(), float occupancy_threshold = 0.5);
+  virtual bool mergeFree(const boost::shared_ptr<ProbVoxelMap> other, const Vector3ui &voxel_offset = Vector3ui(), float occupancy_threshold = 0.5);
 
   void jumpFlood3D(int block_size = cMAX_THREADS_PER_BLOCK, int debug = 0, bool logging_reinit = false);
   void exactDistances3D(std::vector<Vector3f>& points);
@@ -82,8 +83,12 @@ public:
   
   void getDistancesToHost(std::vector<uint>& indices, std::vector<DistanceVoxel::pba_dist_t>& output);
   void getDistances(thrust::device_ptr<uint> dev_indices_begin, thrust::device_ptr<uint> dev_indices_end, thrust::device_ptr<DistanceVoxel::pba_dist_t> dev_output);
+  void getAllDistancesToHost(std::vector<DistanceVoxel::pba_dist_t>& output);
+
+  void getSignedDistancesToHost(const boost::shared_ptr<DistanceVoxelMap> other, std::vector<float>& host_result_map);
 
   void extract_distances(free_space_t* dev_distances, int robot_radius) const;
+  void extract_distances_host(std::vector<free_space_t>& output, int robot_radius) const;
   void init_floodfill(free_space_t* dev_distances, manhattan_dist_t* dev_manhattan_distances, uint robot_radius);
 
   DistanceVoxel::accumulated_diff differences3D(const boost::shared_ptr<DistanceVoxelMap> other_map, int debug = 0, bool logging_reinit = true);
@@ -130,6 +135,23 @@ struct probVoxelOccupied
   bool operator()(const inputTuple &input) const
   {
     return thrust::get<0>(input).getOccupancy() > occ_threshold;
+  }
+};
+
+struct probVoxelFree
+{
+  typedef thrust::tuple<ProbabilisticVoxel, uint> inputTuple;
+  Probability occ_threshold;
+
+  probVoxelFree(Probability occ_threshold_)
+  {
+    occ_threshold = occ_threshold_;
+  }
+
+  __host__ __device__
+  bool operator()(const inputTuple &input) const
+  {
+    return thrust::get<0>(input).getOccupancy() <= occ_threshold;
   }
 };
 
