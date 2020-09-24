@@ -460,6 +460,33 @@ struct Vector4d
   double w;
 };
 
+struct VectorSdfGrad
+{
+  __device__ __host__ VectorSdfGrad() : sdf(), x(), y(), z() {} //problematic in device shared memory arrays
+
+  __device__ __host__ VectorSdfGrad(float _sdf, float _x, float _y, float _z) : sdf(_sdf), x(_x), y(_y), z(_z) {}
+
+
+  float sdf;
+  float x;
+  float y;
+  float z;
+
+  __host__
+  friend std::ostream& operator<<(std::ostream& out, const VectorSdfGrad& vector)
+  {
+    out << "(sdf, x, y, z) = (" << vector.sdf << ", " << vector.x << ", " << vector.y << ", " << vector.z << ")" << std::endl;
+    return out;
+  }
+
+  __host__
+  friend icl_core::logging::ThreadStream& operator<<(icl_core::logging::ThreadStream& out, const VectorSdfGrad& vector)
+  {
+    out << "(sdf, x, y, z) = (" << vector.sdf << ", " << vector.x << ", " << vector.y << ", " << vector.z << ")" << icl_core::logging::endl;
+    return out;
+  }
+};
+
 // *********** Some operations on data types above ********//
 __device__ __host__
    inline Vector3i operator+(const Vector3i& a, const Vector3i& b)
@@ -656,6 +683,17 @@ __device__ __host__
   result.y = a.y + b.y;
   result.z = a.z + b.z;
   result.w = a.w + b.w;
+  return result;
+}
+
+__device__ __host__
+   inline VectorSdfGrad operator+(const VectorSdfGrad& a, const VectorSdfGrad& b)
+{
+  VectorSdfGrad result;
+  result.x = a.x + b.x;
+  result.y = a.y + b.y;
+  result.z = a.z + b.z;
+  result.sdf = a.sdf + b.sdf;
   return result;
 }
 
