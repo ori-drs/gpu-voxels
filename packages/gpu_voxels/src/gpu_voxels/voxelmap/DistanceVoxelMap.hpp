@@ -833,6 +833,99 @@ struct SignedDistanceFunctor
   }
 };
 
+struct SignedDistanceGradientFunctor
+{
+  Vector3ui dims;
+  Vector3i dims_int;
+  float* sdf_ptr;
+
+  __host__ __device__
+  SignedDistanceGradientFunctor(Vector3ui dims, float* sdf_ptr) : dims(dims), sdf_ptr(sdf_ptr) {
+    dims_int = Vector3i(dims);
+  }
+  
+  __host__ __device__
+  VectorSdfGrad  operator()(uint linear_id)
+  {
+    uint temp_linear_id = linear_id;
+
+    uint z = temp_linear_id / (dims.x * dims.y);
+    uint y = (temp_linear_id -= z * (dims.x * dims.y)) / dims.x;
+    uint x = (temp_linear_id -= y * dims.x);
+
+    VectorSdfGrad res;
+
+    if ((x == 0) || (x == dims.x - 1) || (y == 0) || (y == dims.y - 1) || (z == 0) || (z == dims.z - 1)){
+      res.sdf = 0;
+      res.x = 0;
+      res.y = 0;
+      res.z = 0;
+      return res;
+    }
+
+    int voxelOffsetArray[27] = {- (dims_int.x * dims_int.y) - dims_int.x - 1, 
+                            - (dims_int.x * dims_int.y) - dims_int.x,
+                            - (dims_int.x * dims_int.y) - dims_int.x + 1,
+                            - (dims_int.x * dims_int.y) - 1,
+                            - (dims_int.x * dims_int.y),
+                            - (dims_int.x * dims_int.y) + 1,
+                            - (dims_int.x * dims_int.y) + dims_int.x - 1,
+                            - (dims_int.x * dims_int.y) + dims_int.x,
+                            - (dims_int.x * dims_int.y) + dims_int.x + 1,
+
+                            - dims_int.x - 1,
+                            - dims_int.x,
+                            - dims_int.x + 1,
+                            - 1,
+                            0,
+                            + 1,
+                            + dims_int.x - 1,
+                            + dims_int.x,
+                            + dims_int.x + 1,
+
+                            + (dims_int.x * dims_int.y) - dims_int.x - 1,
+                            + (dims_int.x * dims_int.y) - dims_int.x,
+                            + (dims_int.x * dims_int.y) - dims_int.x + 1,
+                            + (dims_int.x * dims_int.y) - 1,
+                            + (dims_int.x * dims_int.y),
+                            + (dims_int.x * dims_int.y) + 1,
+                            + (dims_int.x * dims_int.y) + dims_int.x - 1,
+                            + (dims_int.x * dims_int.y) + dims_int.x,
+                            + (dims_int.x * dims_int.y) + dims_int.x + 1};
+
+    float sdf_vals[27];
+
+    for (size_t i = 0; i < 27; i++)
+    {
+      sdf_vals[i] = sdf_ptr[voxelOffsetArray[i] + (int) linear_id];
+    }
+
+    res.sdf = sdf_ptr[linear_id];
+    res.x = ((sdf_vals[2] + sdf_vals[5] + sdf_vals[8] + 
+              sdf_vals[11] + sdf_vals[14] + sdf_vals[17] + 
+              sdf_vals[20] + sdf_vals[23] + sdf_vals[26]) 
+            - (sdf_vals[0] + sdf_vals[3] + sdf_vals[6] + 
+              sdf_vals[9] + sdf_vals[12] + sdf_vals[15] + 
+              sdf_vals[18] + sdf_vals[21] + sdf_vals[24]))/18.0;
+
+    res.y = ((sdf_vals[18] + sdf_vals[19] + sdf_vals[20] + 
+              sdf_vals[21] + sdf_vals[22] + sdf_vals[23] + 
+              sdf_vals[24] + sdf_vals[25] + sdf_vals[26]) 
+            - (sdf_vals[0] + sdf_vals[1] + sdf_vals[2] + 
+              sdf_vals[3] + sdf_vals[4] + sdf_vals[5] + 
+              sdf_vals[6] + sdf_vals[7] + sdf_vals[8]))/18.0;
+
+    res.z = ((sdf_vals[6] + sdf_vals[7] + sdf_vals[8] + 
+              sdf_vals[15] + sdf_vals[16] + sdf_vals[17] + 
+              sdf_vals[24] + sdf_vals[25] + sdf_vals[26]) 
+            - (sdf_vals[0] + sdf_vals[1] + sdf_vals[2] + 
+              sdf_vals[9] + sdf_vals[10] + sdf_vals[11] + 
+              sdf_vals[18] + sdf_vals[19] + sdf_vals[20]))/18.0;
+    
+    return res;
+  }
+};
+
 void DistanceVoxelMap::getDistancesToHost(std::vector<uint>& indices, std::vector<DistanceVoxel::pba_dist_t>& output)
 {
   // copy indices to device
@@ -861,25 +954,6 @@ void DistanceVoxelMap::getDistances(thrust::device_ptr<uint> dev_indices_begin, 
                     DistanceFunctor(m_dim));
 }
 
-// TODO - this is wrong. Needs to use zip
-void DistanceVoxelMap::getAllDistancesToHost(std::vector<DistanceVoxel::pba_dist_t>& output)
-{  
-  thrust::device_ptr<DistanceVoxel> voxel_begin(this->m_dev_data);
-  thrust::device_ptr<DistanceVoxel> voxel_end(this->m_dev_data + this->m_voxelmap_size);
-  
-    //get the Voxels corresponding to the selected indices
-  thrust::device_vector<DistanceVoxel::pba_dist_t> dev_voxels(this->m_voxelmap_size);
-
-  // extract the distances for the indexed voxels
-  thrust::transform(voxel_begin,
-                    voxel_end,
-                    dev_voxels.begin(),
-                    DistanceFunctor(m_dim)); // Note that this must take tuples <DistanceVoxel, linear_id>
-
-  thrust::copy(dev_voxels.begin(), dev_voxels.end(), output.begin());
-
-}
-
 void DistanceVoxelMap::getSignedDistancesToHost(const boost::shared_ptr<DistanceVoxelMap> other, std::vector<float>& host_result_map)
 {  
   
@@ -901,6 +975,38 @@ void DistanceVoxelMap::getSignedDistancesToHost(const boost::shared_ptr<Distance
   HANDLE_CUDA_ERROR(cudaDeviceSynchronize());
 
   thrust::copy(dev_output.begin(), dev_output.end(), host_result_map.begin());
+}
+
+void DistanceVoxelMap::getSignedDistancesAndGradientsToHost(const boost::shared_ptr<DistanceVoxelMap> other, std::vector<VectorSdfGrad>& host_result_map)
+{  
+  
+  thrust::device_ptr<DistanceVoxel> voxel_begin(this->m_dev_data);
+  thrust::device_ptr<DistanceVoxel> voxel_end(this->m_dev_data + this->m_voxelmap_size);
+  thrust::device_ptr<DistanceVoxel> other_voxel_begin(other->m_dev_data);
+  // thrust::device_ptr<DistanceVoxel> other_voxel_end(other->m_dev_data + this->m_voxelmap_size);
+  
+  thrust::device_vector<float> dev_sdf(this->m_voxelmap_size);
+  thrust::device_vector<VectorSdfGrad> dev_sdf_grad_out(this->m_voxelmap_size);
+
+  // thrust::device_ptr<DistanceVoxel> result_voxel_begin(result_map->m_dev_data);
+  thrust::counting_iterator<int> count_start(0);
+
+  thrust::transform(thrust::make_zip_iterator(thrust::make_tuple(voxel_begin, count_start)), 
+                    thrust::make_zip_iterator(thrust::make_tuple(voxel_end, count_start + this->getVoxelMapSize())), 
+                    thrust::make_zip_iterator(thrust::make_tuple(other_voxel_begin, count_start)), 
+                    dev_sdf.begin(),
+                    SignedDistanceFunctor(m_dim, m_voxel_side_length));
+  HANDLE_CUDA_ERROR(cudaDeviceSynchronize());
+
+  thrust::counting_iterator<int> grad_count_start(0);
+  thrust::transform(grad_count_start, 
+                    grad_count_start + this->getVoxelMapSize(), 
+                    dev_sdf_grad_out.begin(),
+                    SignedDistanceGradientFunctor(m_dim, thrust::raw_pointer_cast(&(dev_sdf[0])) ));
+
+  HANDLE_CUDA_ERROR(cudaDeviceSynchronize());
+
+  thrust::copy(dev_sdf_grad_out.begin(), dev_sdf_grad_out.end(), host_result_map.begin());
 }
 
 /**

@@ -83,9 +83,9 @@ public:
   
   void getDistancesToHost(std::vector<uint>& indices, std::vector<DistanceVoxel::pba_dist_t>& output);
   void getDistances(thrust::device_ptr<uint> dev_indices_begin, thrust::device_ptr<uint> dev_indices_end, thrust::device_ptr<DistanceVoxel::pba_dist_t> dev_output);
-  void getAllDistancesToHost(std::vector<DistanceVoxel::pba_dist_t>& output);
 
   void getSignedDistancesToHost(const boost::shared_ptr<DistanceVoxelMap> other, std::vector<float>& host_result_map);
+  void getSignedDistancesAndGradientsToHost(const boost::shared_ptr<DistanceVoxelMap> other, std::vector<VectorSdfGrad>& host_result_map);
 
   void extract_distances(free_space_t* dev_distances, int robot_radius) const;
   void extract_distances_host(std::vector<free_space_t>& output, int robot_radius) const;
