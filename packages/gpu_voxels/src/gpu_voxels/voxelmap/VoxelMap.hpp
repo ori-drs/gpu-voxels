@@ -27,6 +27,7 @@
 #include <gpu_voxels/voxelmap/ProbVoxelMap.hpp>
 #include <gpu_voxels/voxelmap/BitVoxelMap.hpp>
 #include <gpu_voxels/voxelmap/DistanceVoxelMap.hpp>
+#include <gpu_voxels/voxelmap/SignedDistanceVoxelMap.hpp>
 
 namespace gpu_voxels {
 namespace voxelmap {
