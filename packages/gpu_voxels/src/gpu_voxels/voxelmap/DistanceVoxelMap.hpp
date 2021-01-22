@@ -856,7 +856,7 @@ struct SignedDistanceGradientFunctor
     VectorSdfGrad res;
 
     if ((x == 0) || (x == dims.x - 1) || (y == 0) || (y == dims.y - 1) || (z == 0) || (z == dims.z - 1)){
-      res.sdf = 0;
+      res.sdf = sdf_ptr[linear_id];
       res.x = 0;
       res.y = 0;
       res.z = 0;
