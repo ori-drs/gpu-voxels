@@ -75,7 +75,9 @@ enum MapType {
   MT_PROBAB_MORTON_VOXELLIST,    // List of     probabilistic Voxels (identified by a Morton Code)                      that hold a Probability
   MT_COUNTING_VOXELLIST,         // Voxellist for filtering of noise data with density treshold
 
-  MT_DISTANCE_VOXELMAP           // 3D-Array of deterministic Voxels (identified by their Voxelmap-like Pointer adress) that hold a distance and obstacle vector
+  MT_DISTANCE_VOXELMAP,           // 3D-Array of deterministic Voxels (identified by their Voxelmap-like Pointer adress) that hold a distance and obstacle vector
+  MT_SIGNED_DISTANCE_VOXELMAP       // Class containing two distance maps
+
 };
 
 static const std::string GPU_VOXELS_MAP_TYPE_NOT_IMPLEMENTED = "THIS TYPE OF DATA STRUCTURE IS NOT YET IMPLEMENTED!";
@@ -132,7 +134,7 @@ static const int32_t MAX_OBSTACLE_DISTANCE = 2147483647; //INT_MAX
 
 static const unsigned int PBA_BLOCKSIZE = 64; //for phase 1, 2
 static const unsigned int PBA_TILE_DIM = 16; //for transposeXY
-static const unsigned int PBA_M3_BLOCKX = 16; //for phase 3
+static const unsigned int PBA_M3_BLOCKX = 64; //64; //for phase 3
 
 static const uint32_t PBA_DEFAULT_M1_BLOCK_SIZE = PBA_BLOCKSIZE;
 static const uint32_t PBA_DEFAULT_M2_BLOCK_SIZE = PBA_BLOCKSIZE;
@@ -157,7 +159,8 @@ static const Probability MIN_PROBABILITY = Probability(-127);
 static const Probability MAX_PROBABILITY = Probability(127);
 
 /* ------------------ Temporary Sensor Model ------------ */
-static const Probability cSENSOR_MODEL_FREE = -10;
+// static const Probability cSENSOR_MODEL_FREE = -10;
+static const Probability cSENSOR_MODEL_FREE = -35;
 static const Probability cSENSOR_MODEL_OCCUPIED = 72;
 
 
