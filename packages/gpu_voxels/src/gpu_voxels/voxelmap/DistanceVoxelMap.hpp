@@ -810,6 +810,24 @@ struct DistanceFunctor
   }
 };
 
+struct RealDistanceFunctor
+{
+  Vector3ui dims;
+  float voxel_side_length;
+
+  __host__ __device__
+  RealDistanceFunctor(Vector3ui dims, float voxel_side_length) : dims(dims), voxel_side_length(voxel_side_length)  {}
+  
+  __host__ __device__
+  float operator()(thrust::tuple<DistanceVoxel, uint> t)
+  {
+    DistanceVoxel voxel = thrust::get<0>(t);
+    uint linear_id = thrust::get<1>(t);
+    Vector3ui position = mapToVoxels(linear_id, dims);
+    return voxel_side_length * (float) sqrtf(voxel.squaredObstacleDistance(Vector3i(position.x, position.y, position.z)));
+  }
+};
+
 struct SignedDistanceFunctor
 {
   Vector3ui dims;
@@ -830,6 +848,30 @@ struct SignedDistanceFunctor
     Vector3ui position2 = mapToVoxels(linear_id2, dims);
 
     return voxel_side_length * ( (float) sqrtf(voxel1.squaredObstacleDistance(Vector3i(position1.x, position1.y, position1.z))) - (float) sqrtf(voxel2.squaredObstacleDistance(Vector3i(position2.x, position2.y, position2.z))));
+  }
+};
+
+struct OccupancyFunctor
+{
+
+  Vector3ui dims;
+
+  __host__ __device__
+  OccupancyFunctor(Vector3ui dims) : dims(dims){}
+  
+  __host__ __device__
+  int operator()(thrust::tuple<DistanceVoxel, uint> t1)
+  {
+    DistanceVoxel voxel = thrust::get<0>(t1);
+    uint linear_id = thrust::get<1>(t1);
+    Vector3ui position = mapToVoxels(linear_id, dims);
+
+    float dist = (float) sqrtf(voxel.squaredObstacleDistance(Vector3i(position.x, position.y, position.z)));
+
+    // return (int) voxel.isOccupied(col_threshold_);
+    return (int) dist <= 0 ;
+
+    
   }
 };
 
@@ -954,6 +996,26 @@ void DistanceVoxelMap::getDistances(thrust::device_ptr<uint> dev_indices_begin, 
                     DistanceFunctor(m_dim));
 }
 
+void DistanceVoxelMap::getUnsignedDistancesToHost(std::vector<float>& host_result_map)
+{  
+  
+  thrust::device_ptr<DistanceVoxel> voxel_begin(this->m_dev_data);
+  thrust::device_ptr<DistanceVoxel> voxel_end(this->m_dev_data + this->m_voxelmap_size);
+  
+  thrust::device_vector<float> dev_output(this->m_voxelmap_size);
+ 
+  // thrust::device_ptr<DistanceVoxel> result_voxel_begin(result_map->m_dev_data);
+  thrust::counting_iterator<int> count_start(0);
+
+  thrust::transform(thrust::make_zip_iterator(thrust::make_tuple(voxel_begin, count_start)), 
+                    thrust::make_zip_iterator(thrust::make_tuple(voxel_end, count_start + this->getVoxelMapSize())), 
+                    dev_output.begin(),
+                    RealDistanceFunctor(m_dim, m_voxel_side_length));
+  HANDLE_CUDA_ERROR(cudaDeviceSynchronize());
+
+  thrust::copy(dev_output.begin(), dev_output.end(), host_result_map.begin());
+}
+
 void DistanceVoxelMap::getSignedDistancesToHost(const boost::shared_ptr<DistanceVoxelMap> other, std::vector<float>& host_result_map)
 {  
   
@@ -972,6 +1034,23 @@ void DistanceVoxelMap::getSignedDistancesToHost(const boost::shared_ptr<Distance
                     thrust::make_zip_iterator(thrust::make_tuple(other_voxel_begin, count_start)), 
                     dev_output.begin(),
                     SignedDistanceFunctor(m_dim, m_voxel_side_length));
+  HANDLE_CUDA_ERROR(cudaDeviceSynchronize());
+
+  thrust::copy(dev_output.begin(), dev_output.end(), host_result_map.begin());
+}
+
+void DistanceVoxelMap::getOccupancyToHost(std::vector<int>& host_result_map)
+{  
+  
+  thrust::device_ptr<DistanceVoxel> voxel_begin(this->m_dev_data);
+  thrust::device_ptr<DistanceVoxel> voxel_end(this->m_dev_data + this->m_voxelmap_size);
+  thrust::device_vector<int> dev_output(this->m_voxelmap_size);
+  thrust::counting_iterator<int> count_start(0);
+
+  thrust::transform(thrust::make_zip_iterator(thrust::make_tuple(voxel_begin, count_start)), 
+                    thrust::make_zip_iterator(thrust::make_tuple(voxel_end, count_start + this->getVoxelMapSize())), 
+                    dev_output.begin(),
+                    OccupancyFunctor(m_dim));
   HANDLE_CUDA_ERROR(cudaDeviceSynchronize());
 
   thrust::copy(dev_output.begin(), dev_output.end(), host_result_map.begin());

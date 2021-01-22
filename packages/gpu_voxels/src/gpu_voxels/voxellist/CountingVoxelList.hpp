@@ -37,6 +37,21 @@ namespace voxellist {
 // using namespace gpu_voxels::voxelmap;
 
 
+struct OccupancyFunctor
+{
+
+  float col_threshold_;
+
+  __host__ __device__
+  OccupancyFunctor(float col_threshold) : col_threshold_(col_threshold){}
+  
+  __host__ __device__
+  bool operator()(CountingVoxel voxel)
+  {
+    return (bool) voxel.isOccupied(col_threshold_);
+  }
+};
+
 CountingVoxelList::CountingVoxelList(const Vector3ui ref_map_dim,
                                      const float voxel_side_length,
                                      const MapType map_type)
@@ -132,6 +147,20 @@ void CountingVoxelList::remove_underpopulated(const int8_t threshold)
 
   return;
 }
+
+
+// void CountingVoxelList::getOccupancyToHost(std::vector<bool>& host_result_map, float col_threshold)
+// {  
+//   thrust::device_vector<bool> dev_output(m_dev_list.size());
+ 
+//   thrust::transform(this->m_dev_list.begin(), 
+//                     this->m_dev_list.end(), 
+//                     dev_output.begin(),
+//                     OccupancyFunctor(col_threshold));
+//   HANDLE_CUDA_ERROR(cudaDeviceSynchronize());
+
+//   thrust::copy(dev_output.begin(), dev_output.end(), host_result_map.begin());
+// }
 
 } // end namespace voxellist
 } // end namespace gpu_voxels
