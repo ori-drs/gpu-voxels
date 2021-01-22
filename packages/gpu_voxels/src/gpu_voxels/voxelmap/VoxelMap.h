@@ -27,6 +27,7 @@
 #include <gpu_voxels/voxelmap/BitVoxelMap.h>
 #include <gpu_voxels/voxelmap/DistanceVoxelMap.h>
 #include <gpu_voxels/voxelmap/SignedDistanceVoxelMap.h>
+#include <gpu_voxels/voxelmap/InheritSignedDistanceVoxelMap.h>
 #include <gpu_voxels/helpers/common_defines.h>
 
 namespace gpu_voxels {
