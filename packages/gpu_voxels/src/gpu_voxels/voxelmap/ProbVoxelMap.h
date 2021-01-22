@@ -48,6 +48,11 @@ public:
   void insertSensorData(const PointCloud &global_points, const Vector3f &sensor_pose, const bool enable_raycasting, const bool cut_real_robot,
                         const BitVoxelMeaning robot_voxel_meaning, BitVoxel<length>* robot_map = NULL);
 
+  template<std::size_t length>
+  void insertClippedSensorData(const PointCloud &global_points, const Vector3f &sensor_pose, const bool enable_raycasting, const bool cut_real_robot,
+                        const BitVoxelMeaning robot_voxel_meaning, const float min_ray_length, const float max_ray_length, BitVoxel<length>* robot_map = NULL, 
+                        const bool remove_floor = false);
+
   virtual bool insertMetaPointCloudWithSelfCollisionCheck(const MetaPointCloud *robot_links,
                                                           const std::vector<BitVoxelMeaning>& voxel_meanings = std::vector<BitVoxelMeaning>(),
                                                           const std::vector<BitVector<BIT_VECTOR_LENGTH> >& collision_masks = std::vector<BitVector<BIT_VECTOR_LENGTH> >(),
