@@ -113,16 +113,16 @@ public:
     centerX = ((float) depth_width_ - 1.f) / 2.f;
     centerY = ((float) depth_height_ - 1.f) / 2.f;
 
-    if (pcl_isfinite (depth_focal_length_x_))
+    if (std::isfinite (depth_focal_length_x_))
       constant_x = 1.0f / static_cast<float>(depth_focal_length_x_);
 
-    if (pcl_isfinite (depth_focal_length_y_))
+    if (std::isfinite (depth_focal_length_y_))
       constant_y = 1.0f / static_cast<float>(depth_focal_length_y_);
 
-    if (pcl_isfinite (depth_principal_point_x_))
+    if (std::isfinite (depth_principal_point_x_))
       centerX = static_cast<float>(depth_principal_point_x_);
 
-    if (pcl_isfinite (depth_principal_point_y_))
+    if (std::isfinite (depth_principal_point_y_))
       centerY = static_cast<float>(depth_principal_point_y_);
 
 //    no sample value 0 no shadow value 0

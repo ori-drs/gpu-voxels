@@ -348,16 +348,16 @@ void transformPointCloud(std::vector<Vector3f>& point_cloud, std::vector<Vector3
 //    register float centerX = ((float)cloud->width - 1.f) / 2.f;
 //    register float centerY = ((float)cloud->height - 1.f) / 2.f;
 //
-//    if (pcl_isfinite (rgb_focal_length_x_))
+//    if (std::isfinite (rgb_focal_length_x_))
 //      constant_x = 1.0f / static_cast<float> (rgb_focal_length_x_);
 //
-//    if (pcl_isfinite (rgb_focal_length_y_))
+//    if (std::isfinite (rgb_focal_length_y_))
 //      constant_y = 1.0f / static_cast<float> (rgb_focal_length_y_);
 //
-//    if (pcl_isfinite (rgb_principal_point_x_))
+//    if (std::isfinite (rgb_principal_point_x_))
 //      centerX = static_cast<float>(rgb_principal_point_x_);
 //
-//    if (pcl_isfinite (rgb_principal_point_y_))
+//    if (std::isfinite (rgb_principal_point_y_))
 //      centerY = static_cast<float>(rgb_principal_point_y_);
 //
 //    register const XnDepthPixel* depth_map = depth_image->getDepthMetaData ().Data ();
