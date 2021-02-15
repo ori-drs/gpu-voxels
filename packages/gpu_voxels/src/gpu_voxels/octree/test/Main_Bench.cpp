@@ -385,7 +385,7 @@ void run()
 #endif
   std::string filename = "./Benchmarks/" + m + "/" + getUname().nodename + "_" + tree_type + "_" + t + ".log";
   printf("Log file: %s\n", filename.c_str());
-  ofstream log(filename.c_str());
+  std::ofstream log(filename.c_str());
 
   utsname uname = getUname();
   log << "############## HEADER ################" << std::endl;
