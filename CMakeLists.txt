@@ -1,4 +1,9 @@
-CMAKE_MINIMUM_REQUIRED(VERSION 2.8)
+CMAKE_MINIMUM_REQUIRED(VERSION 3.0.2)
+
+# Noetic hacks to avoid fixing the CUDA version issue (10.1 requires g++-7, 11.0 would be fine with default gcc-9)
+SET(CMAKE_CXX_STANDARD_REQUIRED 14)
+SET(CMAKE_CXX_COMPILER "/usr/bin/g++-7" CACHE STRING "C++ compiler" FORCE)
+SET(CMAKE_C_COMPILER "/usr/bin/gcc-7" CACHE STRING "C compiler" FORCE)
 
 SET(ICMAKER_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/icmaker)
 
