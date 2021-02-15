@@ -25,6 +25,7 @@
 #include <gpu_voxels/voxelmap/kernels/VoxelMapOperations.h>
 
 #include <ctime>
+#include <thread>
 
 namespace gpu_voxels {
 namespace visualization {
@@ -1684,7 +1685,7 @@ void Visualizer::renderFunction(void)
   {
     float wait = 1000.f / m_max_fps - m_delta_time;
     m_delta_time += wait;
-    boost::this_thread::sleep(boost::posix_time::milliseconds(wait));
+    std::this_thread::sleep_for(std::chrono::milliseconds(static_cast<int>(wait)));
   }
 }
 
