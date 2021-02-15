@@ -544,39 +544,41 @@ ICMAKER_EXTERNAL_DEPENDENCIES(
 ICMAKER_BUILD_PROGRAM()
 
 #------------- Example Program distance_kinect_demo ------------
-ICMAKER_SET("distance_kinect_demo" IDE_FOLDER ${EXAMPLES_IDE_FOLDER})
-add_definitions(-DIC_PERFORMANCE_MONITOR)
+IF(OPENNI_FOUND)
+  ICMAKER_SET("distance_kinect_demo" IDE_FOLDER ${EXAMPLES_IDE_FOLDER})
+  add_definitions(-DIC_PERFORMANCE_MONITOR)
 
-ICMAKER_ADD_HEADERS(
-  )
+  ICMAKER_ADD_HEADERS(
+    )
 
-ICMAKER_ADD_SOURCES(
-  DistanceKinectDemo.cpp
-  )
+  ICMAKER_ADD_SOURCES(
+    DistanceKinectDemo.cpp
+    )
 
-ICMAKER_ADD_CUDA_FILES(
-  )
+  ICMAKER_ADD_CUDA_FILES(
+    )
 
-ICMAKER_LOCAL_CPPDEFINES(-DGPU_VOXELS_EXPORT_SYMBOLS -Wno-unknown-pragmas)
-ICMAKER_GLOBAL_CPPDEFINES(-D_IC_BUILDER_GPU_VOXELS_EXAMPLES_DISTANCE_KINECT_DEMO_)
-ICMAKER_INCLUDE_DIRECTORIES(${GPU_VOXELS_INCLUDE_DIRS})
+  ICMAKER_LOCAL_CPPDEFINES(-DGPU_VOXELS_EXPORT_SYMBOLS -Wno-unknown-pragmas)
+  ICMAKER_GLOBAL_CPPDEFINES(-D_IC_BUILDER_GPU_VOXELS_EXAMPLES_DISTANCE_KINECT_DEMO_)
+  ICMAKER_INCLUDE_DIRECTORIES(${GPU_VOXELS_INCLUDE_DIRS})
 
-ICMAKER_INTERNAL_DEPENDENCIES(
-  gpu_voxels
-  )
+  ICMAKER_INTERNAL_DEPENDENCIES(
+    gpu_voxels
+    )
 
-ICMAKER_EXTERNAL_DEPENDENCIES(
-  icl_core
-  icl_core_config
-  icl_core_logging
-  icl_core_performance_monitor
-  Boost_SYSTEM
-  CUDA
-  OpenNI
-  PCL
-  )
+  ICMAKER_EXTERNAL_DEPENDENCIES(
+    icl_core
+    icl_core_config
+    icl_core_logging
+    icl_core_performance_monitor
+    Boost_SYSTEM
+    CUDA
+    OpenNI
+    PCL
+    )
 
-ICMAKER_BUILD_PROGRAM()
+  ICMAKER_BUILD_PROGRAM()
+ENDIF(OPENNI_FOUND)
 
 #------------- Example Program for the two primitiveArray APIs ------------
 ICMAKER_SET("primitive_array_test" IDE_FOLDER ${EXAMPLES_IDE_FOLDER})
