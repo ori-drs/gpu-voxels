@@ -26,8 +26,6 @@
 #include <pcl/io/pcd_io.h>
 #include <pcl/point_types.h>
 #include <pcl/io/openni_grabber.h>
-#include <pcl/visualization/cloud_viewer.h>
-#include <pcl/visualization/image_viewer.h>
 #include <pcl/pcl_macros.h>
 
 #include <boost/thread.hpp>
@@ -191,8 +189,6 @@ protected:
   static const uint32_t height = 480;
   static const uint32_t capture_size = width * height;
   double m_avg_callback;
-
-  //pcl::visualization::CloudViewer m_viewer;
 
   virtual void cloud_callback(const pcl::PointCloud<pcl::PointXYZ>::ConstPtr &cloud);
 
