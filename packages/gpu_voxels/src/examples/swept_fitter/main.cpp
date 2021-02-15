@@ -22,12 +22,12 @@
 //----------------------------------------------------------------------
 
 #include <iostream>
-using namespace std;
+#include <chrono>
+
 #include <gpu_voxels/logging/logging_gpu_voxels.h>
 #include "swept_fitter/GVL.h"
 #include "swept_fitter/Fitter.h"
 #include "swept_fitter/Robot.h"
-#include <boost/timer.hpp>
 #include <stdlib.h>
 
 const struct {
@@ -52,7 +52,7 @@ int main(int argc, char **argv)
 
     SweptFitter::Fitter fitter(&gvl);
 
-    boost::timer timer;
+    std::chrono::high_resolution_clock::time_point t_start = std::chrono::high_resolution_clock::now();
 
     // Create robots
     for (size_t i = 0; i < numRobots; i++)
@@ -62,16 +62,16 @@ int main(int argc, char **argv)
         r->renderSweptVolumes();
     }
 
-    double init_time = timer.elapsed();
+    double init_time = 1e-9 * std::chrono::duration_cast<std::chrono::nanoseconds>(std::chrono::high_resolution_clock::now() - t_start).count();
 
     // Uncomment this to visualize the robot poses
     // while creating a new one
 
     //while(1) { usleep(10000);}
 
-    timer.restart();
+    t_start = std::chrono::high_resolution_clock::now();
     fitter.fit(allResults);
-    double fitting_time = timer.elapsed();
+    double fitting_time = 1e-9 * std::chrono::duration_cast<std::chrono::nanoseconds>(std::chrono::high_resolution_clock::now() - t_start).count();
 
     std::cout << std::endl << "== STATISTICS ==" << std::endl
               << "results: " << (allResults? "all":"first")
