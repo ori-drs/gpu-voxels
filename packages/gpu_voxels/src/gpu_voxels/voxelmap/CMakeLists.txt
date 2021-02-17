@@ -23,6 +23,8 @@ ICMAKER_ADD_HEADERS(
   TemplateVoxelMap.h
   VoxelMap.h
   DistanceVoxelMap.h
+  SignedDistanceVoxelMap.h
+  InheritSignedDistanceVoxelMap.h
   )
 
 ICMAKER_ADD_SOURCES(
@@ -48,7 +50,10 @@ ICMAKER_ADD_CUDA_FILES(
   VoxelMap.hpp
   DistanceVoxelMap.h
   DistanceVoxelMap.hpp
-  )
+  SignedDistanceVoxelMap.h
+  SignedDistanceVoxelMap.hpp  
+  InheritSignedDistanceVoxelMap.h
+  InheritSignedDistanceVoxelMap.hpp)
 
 # removing unknown pragma warnings due to OpenNI spam
 ICMAKER_LOCAL_CPPDEFINES(-DGPU_VOXELS_EXPORT_SYMBOLS -Wno-unknown-pragmas)

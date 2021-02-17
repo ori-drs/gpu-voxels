@@ -1,3 +1,5 @@
 build
 export
 CMakeLists.txt.user
+
+.vscode/

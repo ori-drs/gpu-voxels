@@ -808,6 +808,63 @@ void kernelInsertSensorData(ProbabilisticVoxel* voxelmap, const uint32_t voxelma
   }
 }
 
+template<std::size_t length, class RayCasting>
+__global__
+void kernelInsertSensorData(ProbabilisticVoxel* voxelmap, const uint32_t voxelmap_size,
+                            const Vector3ui dimensions, const float voxel_side_length, const Vector3f sensor_pose,
+                            const Vector3f* sensor_data, const size_t num_points, const bool cut_real_robot,
+                            BitVoxel<length>* robotmap, const uint32_t bit_index, RayCasting rayCaster, 
+                            const float min_ray_length, const float max_ray_length, const bool remove_floor)
+{
+  for (uint32_t i = blockIdx.x * blockDim.x + threadIdx.x; (i < voxelmap_size) && (i < num_points);
+      i += gridDim.x * blockDim.x)
+  {
+    if (!(isnan(sensor_data[i].x) || isnan(sensor_data[i].y) || isnan(sensor_data[i].z)))
+    {
+      float ray_length = sqrt((sensor_data[i].x-sensor_pose.x) * (sensor_data[i].x-sensor_pose.x) + 
+                          (sensor_data[i].y-sensor_pose.y) * (sensor_data[i].y-sensor_pose.y) + 
+                          (sensor_data[i].z-sensor_pose.z) * (sensor_data[i].z-sensor_pose.z));
+
+      if ((ray_length >= min_ray_length) && (ray_length <= max_ray_length)){
+        const Vector3ui integer_coordinates = mapToVoxels(voxel_side_length, sensor_data[i]);
+        const Vector3ui sensor_coordinates = mapToVoxels(voxel_side_length, sensor_pose);
+
+        /* both data and sensor coordinates must
+        be within boundaries for raycasting to work */
+        if ((integer_coordinates.x < dimensions.x) && (integer_coordinates.y < dimensions.y)
+            && (integer_coordinates.z < dimensions.z) && (sensor_coordinates.x < dimensions.x)
+            && (sensor_coordinates.y < dimensions.y) && (sensor_coordinates.z < dimensions.z))
+        {
+          bool update = false;
+          if (cut_real_robot)
+          {
+            BitVoxel<length>* robot_voxel = getVoxelPtr(robotmap, dimensions, integer_coordinates.x,
+                                                        integer_coordinates.y, integer_coordinates.z);
+
+            update = !robot_voxel->bitVector().getBit(bit_index); // not occupied by robot
+          }
+          else
+            update = true;
+
+          if (update)
+          {
+            // sensor does not see robot, so insert data into voxelmap
+            // raycasting
+            rayCaster.rayCast(voxelmap, dimensions, sensor_coordinates, integer_coordinates);
+
+            // insert measured data itself afterwards, so it overrides free voxels from raycaster:
+            ProbabilisticVoxel* voxel = getVoxelPtr(voxelmap, dimensions, integer_coordinates.x,
+                                                    integer_coordinates.y, integer_coordinates.z);
+            if(!(remove_floor && integer_coordinates.z == 0)){
+              voxel->updateOccupancy(cSENSOR_MODEL_OCCUPIED);
+            }
+          }
+        }
+      }
+    }
+  }
+}
+
 template<std::size_t length>
 __global__
 void kernelShiftBitVector(BitVoxel<length>* voxelmap,

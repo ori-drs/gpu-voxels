@@ -55,6 +55,8 @@ public:
 
   void remove_underpopulated(const int8_t threshold);
 
+  // void getOccupancyToHost(std::vector<bool>& host_result_map, float col_threshold);
+
 private:
 
   // thrust::device_vector<CountingVoxel> m_dev_colliding_bits_result_list;
