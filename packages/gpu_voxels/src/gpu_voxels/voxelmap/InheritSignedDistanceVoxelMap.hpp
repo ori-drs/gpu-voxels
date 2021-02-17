@@ -83,12 +83,16 @@ void InheritSignedDistanceVoxelMap::getSignedDistancesAndGradientsToHost(std::ve
   this->NormalDistanceVoxelMap::getSignedDistancesAndGradientsToHost(boost::dynamic_pointer_cast<DistanceVoxelMap>(GpuVoxelsMapSharedPtr(getInverse())), host_result_map);
 }
 
-void InheritSignedDistanceVoxelMap::parallelBanding3D(){
+void InheritSignedDistanceVoxelMap::parallelBanding3DSigned(){
   this->NormalDistanceVoxelMap::parallelBanding3D();
   this->InverseDistanceVoxelMap::parallelBanding3D();     
 }
 
-void InheritSignedDistanceVoxelMap::parallelBanding3DMark(uint32_t m1, uint32_t m2, uint32_t m3, uint32_t arg_m1_blocksize, uint32_t arg_m2_blocksize, uint32_t arg_m3_blocksize, bool detailtimer) {
+void InheritSignedDistanceVoxelMap::parallelBanding3DUnsigned(){
+  this->NormalDistanceVoxelMap::parallelBanding3D();
+}
+
+void InheritSignedDistanceVoxelMap::parallelBanding3DParallelSigned(uint32_t m1, uint32_t m2, uint32_t m3, uint32_t arg_m1_blocksize, uint32_t arg_m2_blocksize, uint32_t arg_m3_blocksize, bool detailtimer) {
 
   // if (this->NormalDistanceVoxelMap::m_dim.x != this->NormalDistanceVoxelMap::m_dim.y || this->NormalDistanceVoxelMap::m_dim.x % 64)
   // {
@@ -499,6 +503,117 @@ void InheritSignedDistanceVoxelMap::parallelBanding3DMark(uint32_t m1, uint32_t 
 
 }
 
+// void InheritSignedDistanceVoxelMap::parallelBanding3DUnsigned(uint32_t m1, uint32_t m2, uint32_t m3, uint32_t arg_m1_blocksize, uint32_t arg_m2_blocksize, uint32_t arg_m3_blocksize, bool detailtimer) {
+
+//   HANDLE_CUDA_ERROR(cudaDeviceSynchronize());
+
+//   thrust::device_ptr<DistanceVoxel> original_begin_3d(this->NormalDistanceVoxelMap::m_dev_data);
+//   thrust::device_ptr<DistanceVoxel> original_end_3d(this->NormalDistanceVoxelMap::m_dev_data + this->NormalDistanceVoxelMap::m_voxelmap_size);
+
+//   thrust::device_vector<DistanceVoxel> initial_map(original_begin_3d, original_end_3d);
+
+//   thrust::device_ptr<DistanceVoxel> distance_map_begin = original_begin_3d;
+
+
+//   // PBA phase 1
+//   //     optimise: could work as series of simple transforms in one array
+
+//   //TODO: ensure blocksize divides m_dim.* evenly
+
+//   //in total m1*dim.x*dim.y threads
+//   //within warp threads should access x-neighbors
+//   dim3 m1_block_size(min(arg_m1_blocksize, this->NormalDistanceVoxelMap::m_dim.x)); // optimize blocksize
+//   dim3 m1_grid_size(this->NormalDistanceVoxelMap::m_dim.x / m1_block_size.x, this->NormalDistanceVoxelMap::m_dim.y, m1); //m1 bands
+
+//   kernelPBAphase1FloodZ
+//       <<< m1_grid_size, m1_block_size, 0, s1>>>
+//       (distance_map_begin, distance_map_begin, this->NormalDistanceVoxelMap::m_dim, this->NormalDistanceVoxelMap::m_dim.z / m1); //distance_map is output
+
+//   // compute proximate points locally in each band
+//   dim3 m2_block_size(min(arg_m2_blocksize, min(this->NormalDistanceVoxelMap::m_dim.x, this->NormalDistanceVoxelMap::m_dim.y))); // optimize blocksize
+//   dim3 m2_grid_size = dim3(this->NormalDistanceVoxelMap::m_dim.x / m2_block_size.x, m2, this->NormalDistanceVoxelMap::m_dim.z); // m2 bands per column
+
+//   thrust::device_ptr<pba_fw_ptr_t> forward_ptrs_begin((pba_fw_ptr_t*)(distance_map_begin.get()));
+
+//   // repeatedly merge two bands into one
+//   for (int band_count = m2; band_count > 1; band_count /= 2) {
+//     dim3 m2_merge_grid_size = dim3(this->NormalDistanceVoxelMap::m_dim.x / m2_block_size.x, band_count / 2, this->NormalDistanceVoxelMap::m_dim.z);
+
+//     kernelPBAphase2MergeBands
+//         <<< m2_merge_grid_size, m2_block_size, 0, s1  >>>
+//         (initial_map.begin(), forward_ptrs_begin, this->NormalDistanceVoxelMap::m_dim, this->NormalDistanceVoxelMap::m_dim.y / band_count); //update both stack and forward_ptrs
+   
+//   }
+
+//   // end of phase 2: initial_ contains P_i information; y coordinates were replaced by back-pointers; y coordinate is implicitly equal to voxel position.y
+
+//   // TODO: benchmark and/or delete texture usage: (initialResDesc, texDesc and initialTexObj)
+//   //TODO: use template specialisation to implement; run once with and without textures
+
+//   // Specify texture
+//   struct cudaResourceDesc initialResDesc;
+//   memset(&initialResDesc, 0, sizeof(initialResDesc));
+//   initialResDesc.resType = cudaResourceTypeLinear;
+//   initialResDesc.res.linear.devPtr = thrust::raw_pointer_cast(initial_map.data());
+//   initialResDesc.res.linear.sizeInBytes = initial_map.size()*sizeof(int);
+
+//   //TODO!
+//   initialResDesc.res.linear.desc.f = cudaChannelFormatKindSigned;
+//   initialResDesc.res.linear.desc.x = 32; // bits per channel
+
+//   struct cudaTextureDesc texDesc;
+//   memset(&texDesc, 0, sizeof(texDesc));
+//   texDesc.addressMode[0] = cudaAddressModeClamp;
+//   texDesc.filterMode = cudaFilterModePoint;
+//   texDesc.readMode = cudaReadModeElementType;
+//   texDesc.normalizedCoords = 0;
+
+//   // Create texture object
+//   cudaTextureObject_t initialTexObj = 0;
+//   cudaCreateTextureObject(&initialTexObj, &initialResDesc, &texDesc, NULL);
+
+//   dim3 m3_block_size(min(arg_m3_blocksize, min(this->NormalDistanceVoxelMap::m_dim.x, this->NormalDistanceVoxelMap::m_dim.y)), m3); // y bands; block_size threads in total
+//   dim3 m3_grid_size = dim3(this->NormalDistanceVoxelMap::m_dim.x / m3_block_size.x, 1, this->NormalDistanceVoxelMap::m_dim.z);
+
+//   //distance map is write-only during phase3
+//   kernelPBAphase3Distances
+//       <<< m3_grid_size, m3_block_size, 0, s1  >>>
+//         (initialTexObj, distance_map_begin, this->NormalDistanceVoxelMap::m_dim);
+
+//   dim3 transpose_block(PBA_TILE_DIM, PBA_TILE_DIM);
+//   dim3 transpose_grid(this->NormalDistanceVoxelMap::m_dim.x / transpose_block.x, this->NormalDistanceVoxelMap::m_dim.y / transpose_block.y, this->NormalDistanceVoxelMap::m_dim.z); //maximum blockDim.y/z is 64K
+  
+//   // transpose x/y within every z-layer; need to transpose obstacle coordinates as well
+//   // transpose in-place to reuse input/ouput scheme of phase 2&3
+//   // optimise: check bare transpose performance in-place vs non-inplace
+//   //TODO: ensure m_dim x/y divisible by PBA_TILE_DIM
+//   kernelPBA3DTransposeXY<<<transpose_grid, transpose_block, 0, s1 >>>
+//                         (distance_map_begin); //optimise: remove thrust wrapper?     
+
+//   kernelPBAphase2ProximateBackpointers
+//       <<< m2_grid_size, m2_block_size, 0, s1  >>>
+//      (distance_map_begin, initial_map.begin(), this->NormalDistanceVoxelMap::m_dim, this->NormalDistanceVoxelMap::m_dim.y / m2); //output stack/singly linked list with backpointers; some elements are skipped
+
+//   // repeatedly merge two bands into one
+//   for (int band_count = m2; band_count > 1; band_count /= 2) {
+//     dim3 m2_merge_grid_size = dim3(this->NormalDistanceVoxelMap::m_dim.x / m2_block_size.x, band_count / 2, this->NormalDistanceVoxelMap::m_dim.z);
+//     kernelPBAphase2MergeBands
+//         <<< m2_merge_grid_size, m2_block_size, 0, s1  >>>
+//         (initial_map.begin(), forward_ptrs_begin, this->NormalDistanceVoxelMap::m_dim, this->NormalDistanceVoxelMap::m_dim.y / band_count); //update both stack and forward_ptrs
+//   }
+
+//   kernelPBAphase3Distances
+//       <<< m3_grid_size, m3_block_size, 0, s1 >>>
+//       (initialTexObj, distance_map_begin, this->NormalDistanceVoxelMap::m_dim);
+
+//   kernelPBA3DTransposeXY<<<transpose_grid, transpose_block, 0, s1 >>>
+//                         (distance_map_begin);
+
+//   HANDLE_CUDA_ERROR(cudaDeviceSynchronize());
+
+//   // Destroy texture object
+//   cudaDestroyTextureObject(initialTexObj);
+// }
 
 } // end of namespace voxelmap
 } // end of namespace gpu_voxels

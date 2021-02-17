@@ -52,9 +52,11 @@ class InheritSignedDistanceVoxelMap: public virtual NormalDistanceVoxelMap, publ
   void getSignedDistancesToHost(std::vector<float>& host_result_map);
   void getSignedDistancesAndGradientsToHost(std::vector<VectorSdfGrad>& host_result_map);
 
-  void parallelBanding3D();
+  void parallelBanding3DSigned();
+  void parallelBanding3DUnsigned();
 
-  void parallelBanding3DMark(uint32_t m1 = 1, uint32_t m2 = 1, uint32_t m3 = 1, uint32_t m1_blocksize = gpu_voxels::PBA_DEFAULT_M1_BLOCK_SIZE, uint32_t m2_blocksize = gpu_voxels::PBA_DEFAULT_M2_BLOCK_SIZE, uint32_t m3_blocksize = gpu_voxels::PBA_DEFAULT_M3_BLOCK_SIZE, bool detailtimer = false);
+  void parallelBanding3DParallelSigned(uint32_t m1 = 1, uint32_t m2 = 1, uint32_t m3 = 1, uint32_t m1_blocksize = gpu_voxels::PBA_DEFAULT_M1_BLOCK_SIZE, uint32_t m2_blocksize = gpu_voxels::PBA_DEFAULT_M2_BLOCK_SIZE, uint32_t m3_blocksize = gpu_voxels::PBA_DEFAULT_M3_BLOCK_SIZE, bool detailtimer = false);
+  // void parallelBanding3DCustomSUnsigned(uint32_t m1 = 1, uint32_t m2 = 1, uint32_t m3 = 1, uint32_t m1_blocksize = gpu_voxels::PBA_DEFAULT_M1_BLOCK_SIZE, uint32_t m2_blocksize = gpu_voxels::PBA_DEFAULT_M2_BLOCK_SIZE, uint32_t m3_blocksize = gpu_voxels::PBA_DEFAULT_M3_BLOCK_SIZE, bool detailtimer = false);
 
   private:
     // create two CUDA streams

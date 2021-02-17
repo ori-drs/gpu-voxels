@@ -855,7 +855,8 @@ void kernelInsertSensorData(ProbabilisticVoxel* voxelmap, const uint32_t voxelma
             // insert measured data itself afterwards, so it overrides free voxels from raycaster:
             ProbabilisticVoxel* voxel = getVoxelPtr(voxelmap, dimensions, integer_coordinates.x,
                                                     integer_coordinates.y, integer_coordinates.z);
-            if(!(remove_floor && integer_coordinates.z == 0)){
+            // if(!(remove_floor && integer_coordinates.z == 0)){
+            if(!(remove_floor && integer_coordinates.z <= 2)){
               voxel->updateOccupancy(cSENSOR_MODEL_OCCUPIED);
             }
           }
