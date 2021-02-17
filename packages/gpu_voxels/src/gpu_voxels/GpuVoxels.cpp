@@ -264,6 +264,38 @@ GpuVoxelsMapSharedPtr GpuVoxels::addMap(const MapType map_type, const std::strin
       break;
     }
 
+    case MT_SIGNED_DISTANCE_VOXELMAP:
+    {
+
+      GpuVoxelsMapSharedPtr inv_map_shared_ptr;
+      VisProviderSharedPtr vis_inv_map_shared_ptr;
+
+      voxelmap::InheritSignedDistanceVoxelMap* orig_map = new voxelmap::InheritSignedDistanceVoxelMap(m_dim, m_voxel_side_length, MT_DISTANCE_VOXELMAP);
+
+      map_shared_ptr = GpuVoxelsMapSharedPtr(orig_map->getNormal());
+      inv_map_shared_ptr = GpuVoxelsMapSharedPtr(orig_map->getInverse());
+      
+      VisVoxelMap* vis_map = new VisVoxelMap(orig_map->getNormal(), map_name);
+      VisVoxelMap* vis_inv_map = new VisVoxelMap(orig_map->getInverse(), map_name + "Inverse");
+
+      vis_map_shared_ptr = VisProviderSharedPtr(vis_map);
+      vis_inv_map_shared_ptr = VisProviderSharedPtr(vis_inv_map);
+
+      if (map_shared_ptr)
+      {
+        std::pair<std::string, ManagedMap> named_map_pair(map_name, ManagedMap(map_shared_ptr, vis_map_shared_ptr));
+        m_managed_maps.insert(named_map_pair);
+
+        std::pair<std::string, ManagedMap> named_inv_map_pair(map_name + "Inverse", ManagedMap(inv_map_shared_ptr, vis_inv_map_shared_ptr));
+        m_managed_maps.insert(named_inv_map_pair);
+
+        // sanity checking, that nothing went wrong:
+        CHECK_CUDA_ERROR();
+        return map_shared_ptr;
+      }
+
+    }
+
     default:
     {
       LOGGING_ERROR_C(Gpu_voxels, GpuVoxels, "THIS TYPE OF MAP IS UNKNOWN!" << endl);
